@@ -67,6 +67,13 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 	ss->ppid = -1; /* Not needed at this point */
 	ss->seccomp_mode = SECCOMP_MODE_DISABLED;
 
+	/*
+	 * Must read SUD mode from the ptrace poke.
+	 * May as well get all the other settings here, too.
+	 */
+	struct ptrace_sud_config sud;
+	if (ptrace_get_sud(pid))
+
 	while (fgets(aux, sizeof(aux), f)) {
 		if (!strncmp(aux, "State:", 6)) {
 			ss->state = aux[7];
@@ -308,6 +315,9 @@ try_again:
 		pr_perror("Unable to set PTRACE_O_TRACESYSGOOD for %d", pid);
 		return -1;
 	}
+
+	if (ss->sud_mode != SUD_MODE_DISABLED && ptrace_suspend_sud(pid) < 0)
+		goto err;
 
 	if (ss->seccomp_mode != SECCOMP_MODE_DISABLED && ptrace_suspend_seccomp(pid) < 0)
 		goto err;

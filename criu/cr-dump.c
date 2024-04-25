@@ -2207,6 +2207,9 @@ int cr_dump_tasks(pid_t pid)
 	if (seccomp_collect_dump_filters() < 0)
 		goto err;
 
+	if (dump_sud() < 0)
+		goto err;
+
 	/* Errors handled later in detect_pid_reuse */
 	parent_ie = get_parent_inventory();
 

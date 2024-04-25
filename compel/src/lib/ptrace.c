@@ -21,6 +21,32 @@
 
 #include "log.h"
 
+int ptrace_get_sud(pid_t pid, struct ptrace_sud_config *cfg)
+{
+	if (ptrace(PTRACE_GET_SYSCALL_USER_DISPATCH_CONFIG, pid, (void *)sizeof(*cfg), cfg)) {
+		pr_perror("getting SUD config failed");
+		return -1;
+	}
+	return 0;
+}
+
+int ptrace_set_sud(pid_t pid, struct ptrace_sud_config *set) {	
+	if (ptrace(PTRACE_SET_SYSCALL_USER_DISPATCH_CONFIG, pid, (void *)sizeof(*set), set)) {
+		pr_perror("setting SUD config failed");
+		return -1;
+	}
+	return 0;
+}
+
+int ptrace_suspend_sud(pid_t pid)
+{
+	struct ptrace_sud_config cfg;
+	memset(&cfg, 0, sizeof(cfg));
+	cfg.mode = PR_SYS_DISPATCH_OFF;
+	
+	return ptrace_set_sud(pid, &cfg);
+}
+
 int ptrace_suspend_seccomp(pid_t pid)
 {
 	if (ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_SUSPEND_SECCOMP | PTRACE_O_TRACESYSGOOD) < 0) {
