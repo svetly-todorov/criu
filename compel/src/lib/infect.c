@@ -72,7 +72,10 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 	 * May as well get all the other settings here, too.
 	 */
 	struct ptrace_sud_config sud;
-	if (ptrace_get_sud(pid))
+	if (ptrace_get_sud(pid, &sud))
+		goto err_parse;
+	
+	ss->sud_mode = sud.mode;
 
 	while (fgets(aux, sizeof(aux), f)) {
 		if (!strncmp(aux, "State:", 6)) {
@@ -316,7 +319,7 @@ try_again:
 		return -1;
 	}
 
-	if (ss->sud_mode != SUD_MODE_DISABLED && ptrace_suspend_sud(pid) < 0)
+	if (ss->sud_mode != SYS_DISPATCH_OFF && ptrace_suspend_sud(pid) < 0)
 		goto err;
 
 	if (ss->seccomp_mode != SECCOMP_MODE_DISABLED && ptrace_suspend_seccomp(pid) < 0)

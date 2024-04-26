@@ -668,7 +668,7 @@ static int collect_children(struct pstree_item *item)
 		c->pid->state = ret;
 		list_add_tail(&c->sibling, &item->children);
 
-		ret = sud_collect_entry(pid, creds.s.sud_mode);
+		ret = sud_collect_entry(pid);
 		if (ret < 0)
 			goto free;
 
@@ -860,7 +860,7 @@ static int collect_threads(struct pstree_item *item)
 			goto err;
 		}
 
-		if(sud_collect_entry(pid))
+		if (sud_collect_entry(pid))
 			goto err;
 
 		if (seccomp_collect_entry(pid, t_creds.s.seccomp_mode))

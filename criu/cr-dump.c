@@ -742,6 +742,8 @@ int dump_thread_core(int pid, CoreEntry *core, const struct parasite_dump_thread
 	}
 	if (!ret)
 		ret = seccomp_dump_thread(pid, tc);
+	if (!ret)
+		ret = dump_sud_per_core(pid, tc);
 
 	/*
 	 * We are dumping rseq() in the dump_thread_rseq() function,

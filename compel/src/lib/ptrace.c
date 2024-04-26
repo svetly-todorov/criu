@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -21,17 +22,17 @@
 
 #include "log.h"
 
-int ptrace_get_sud(pid_t pid, struct ptrace_sud_config *cfg)
+int ptrace_get_sud(pid_t tid, struct ptrace_sud_config *cfg)
 {
-	if (ptrace(PTRACE_GET_SYSCALL_USER_DISPATCH_CONFIG, pid, (void *)sizeof(*cfg), cfg)) {
+	if (ptrace(PTRACE_GET_SYSCALL_USER_DISPATCH_CONFIG, tid, (void *)sizeof(*cfg), cfg)) {
 		pr_perror("getting SUD config failed");
 		return -1;
 	}
 	return 0;
 }
 
-int ptrace_set_sud(pid_t pid, struct ptrace_sud_config *set) {	
-	if (ptrace(PTRACE_SET_SYSCALL_USER_DISPATCH_CONFIG, pid, (void *)sizeof(*set), set)) {
+int ptrace_set_sud(pid_t tid, struct ptrace_sud_config *set) {	
+	if (ptrace(PTRACE_SET_SYSCALL_USER_DISPATCH_CONFIG, tid, (void *)sizeof(*set), set)) {
 		pr_perror("setting SUD config failed");
 		return -1;
 	}
@@ -40,11 +41,46 @@ int ptrace_set_sud(pid_t pid, struct ptrace_sud_config *set) {
 
 int ptrace_suspend_sud(pid_t pid)
 {
-	struct ptrace_sud_config cfg;
-	memset(&cfg, 0, sizeof(cfg));
-	cfg.mode = PR_SYS_DISPATCH_OFF;
+	char task[32];
+	int tid;
+	struct ptrace_sud_config disable;
+	struct dirent *de;
+	DIR *dp;
+
+	/* Setup SUD-disable struct */
+	memset(&disable, 0, sizeof(disable));
+	disable.mode = PR_SYS_DISPATCH_OFF;
 	
-	return ptrace_set_sud(pid, &cfg);
+	/*
+	 * Get all tids for this PID and disable SUD on each.
+	 * Not sure if there's a more elegant way than /proc/<pid>/task.
+	 * Process should be suspended due to ptrace so no new threads.
+	 */
+	snprintf(task, sizeof(task), "/proc/%d/task", pid);
+	dp = opendir(task);
+	if (!dp) {
+		pr_perror("getting tids for %d failed", pid);
+		return -1;
+	}
+
+	while ((de = readdir(dp))) {
+		if (de->d_name[0] == '.')
+			continue;
+
+		tid = atoi(de->d_name);
+		if (!tid) {
+			closedir(dp);
+			pr_perror("convert %s to tid failed", de->d_name);
+			return -1;
+		}
+		
+		/* Disable SUD for this thread */
+		ptrace_set_sud(tid, &disable);
+	}
+
+	/* TODO rollback settings on failure? */
+	closedir(dp);
+	return 0;
 }
 
 int ptrace_suspend_seccomp(pid_t pid)
