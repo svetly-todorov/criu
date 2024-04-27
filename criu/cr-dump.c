@@ -76,6 +76,7 @@
 #include "aio.h"
 #include "lsm.h"
 #include "seccomp.h"
+#include "sud.h"
 #include "seize.h"
 #include "fault-injection.h"
 #include "dump.h"

@@ -106,7 +106,7 @@ message thread_core_entry {
 	optional seccomp_mode		seccomp_mode	= 11;
 	optional uint32			seccomp_filter	= 12;
 
-	optional sud_mode		sud_mode	= 13;
+	optional uint32		sud_mode	= 13;
 	optional uint32			sud_setting = 14;
 
 	optional string			comm		= 15;

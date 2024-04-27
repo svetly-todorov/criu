@@ -44,6 +44,10 @@
 #define SECCOMP_MODE_DISABLED 0
 #endif
 
+#ifndef SYS_DISPATCH_OFF
+#define SYS_DISPATCH_OFF 0
+#endif
+
 static int prepare_thread(int pid, struct thread_ctx *ctx);
 
 static inline void close_safe(int *pfd)
@@ -59,6 +63,8 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 	char aux[128];
 	FILE *f;
 
+	sud_config_t sud;
+
 	sprintf(aux, "/proc/%d/status", pid);
 	f = fopen(aux, "r");
 	if (!f)
@@ -68,7 +74,6 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 	ss->seccomp_mode = SECCOMP_MODE_DISABLED;
 
 	/* Must read SUD mode from the ptrace poke. */
-	sud_config_t sud;
 	if (ptrace_get_sud(pid, &sud))
 		goto err_parse;
 	
