@@ -58,7 +58,7 @@ int sud_collect_entry(pid_t tid_real)
 		return -1;
 	}
 
-    struct ptrace_sud_config config;
+    sud_config_t config;
     if (ptrace_get_sud(tid_real, &config)) {
         pr_err("Failed to get SUD settings for %d", tid_real);
         return -1;
@@ -226,7 +226,7 @@ int restore_sud_per_core(pid_t tid_real, ThreadCoreEntry *thread_core)
 
 	ss = sud_img_entry->sud_settings[thread_core->sud_setting];
 
-	struct ptrace_sud_config config;
+	sud_config_t config;
 	config.mode = SYS_DISPATCH_ON;
 	config.selector = ss->selector;
 	config.offset = ss->offset;

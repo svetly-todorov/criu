@@ -67,11 +67,8 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 	ss->ppid = -1; /* Not needed at this point */
 	ss->seccomp_mode = SECCOMP_MODE_DISABLED;
 
-	/*
-	 * Must read SUD mode from the ptrace poke.
-	 * May as well get all the other settings here, too.
-	 */
-	struct ptrace_sud_config sud;
+	/* Must read SUD mode from the ptrace poke. */
+	sud_config_t sud;
 	if (ptrace_get_sud(pid, &sud))
 		goto err_parse;
 	

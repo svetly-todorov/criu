@@ -22,7 +22,7 @@
 
 #include "log.h"
 
-int ptrace_get_sud(pid_t tid, struct ptrace_sud_config *cfg)
+int ptrace_get_sud(pid_t tid, sud_config_t *cfg)
 {
 	if (ptrace(PTRACE_GET_SYSCALL_USER_DISPATCH_CONFIG, tid, (void *)sizeof(*cfg), cfg)) {
 		pr_perror("getting SUD config failed");
@@ -31,7 +31,8 @@ int ptrace_get_sud(pid_t tid, struct ptrace_sud_config *cfg)
 	return 0;
 }
 
-int ptrace_set_sud(pid_t tid, struct ptrace_sud_config *set) {	
+int ptrace_set_sud(pid_t tid, sud_config_t *set)
+{
 	if (ptrace(PTRACE_SET_SYSCALL_USER_DISPATCH_CONFIG, tid, (void *)sizeof(*set), set)) {
 		pr_perror("setting SUD config failed");
 		return -1;
@@ -43,7 +44,7 @@ int ptrace_suspend_sud(pid_t pid)
 {
 	char task[32];
 	int tid;
-	struct ptrace_sud_config disable;
+	sud_config_t disable;
 	struct dirent *de;
 	DIR *dp;
 
