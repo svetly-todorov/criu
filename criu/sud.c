@@ -113,11 +113,11 @@ int dump_sud_per_core(pid_t tid_real, ThreadCoreEntry *tc)
 int dump_sud(void)
 {
 	SysDispatchEntry se = SYS_DISPATCH_ENTRY__INIT;
-	SysDispatchSetting *settings;
-	struct sys_dispatch_entry *entry;
+	SysDispatchSetting *settings = NULL;
+	struct sys_dispatch_entry *entry = NULL;
 	size_t img_setting_pos = 0, nr_settings = 0, i;
 	struct rb_node *node;
-	int ret;
+	int ret = -1;
 
 	/* Get the number of entries in the collect ring buffer */
 	for (node = rb_first(&sud_tid_rb_root); node; node = rb_next(node)) {
@@ -128,16 +128,12 @@ int dump_sud(void)
 	/* Allocate space for dumping the thread settings */
 	se.n_settings = nr_settings;
 	if (nr_settings) {
-		/* Allocate the list of pointers to settings */
 		se.settings = xmalloc(sizeof(*se.settings) * nr_settings);
 		if (!se.settings)
-			return -1;
-		/* Allocate the settings themselves */
+			goto cleanup_exit;
 		settings = xmalloc(sizeof(*settings) * nr_settings);
-		if (!settings) {
-			xfree(se.settings);
-			return -1;
-		}
+		if (!settings)
+			goto cleanup_exit;
 		/*
 		 * Fill the list of pointers with setting addresses,
 		 * initializing the protobuf structs on the way
@@ -162,7 +158,8 @@ int dump_sud(void)
 
 	ret = pb_write_one(img_from_set(glob_imgset, CR_FD_SYS_DISPATCH), &se, PB_SYS_DISPATCH);
 
-	/* Once saved, we don't need to keep the SUD entries allocated */
+cleanup_exit:
+	/* Once saved to disk, we don't need to keep the data structures allocated */
 	xfree(se.settings);
 	xfree(settings);
 
