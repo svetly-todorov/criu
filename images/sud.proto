@@ -2,13 +2,13 @@
 
 syntax = "proto2";
 
-message sud_setting {
+message sys_dispatch_setting {
     required uint64 mode = 1;
     required uint64 selector = 2;
     required uint64 offset = 3;
-    required uint64 len = 4;       
+    required uint64 len = 4;
 }
 
-message sud_entry {
-    repeated sud_setting    sud_settings = 1;
+message sys_dispatch_entry {
+    repeated sys_dispatch_setting    settings = 1;
 }

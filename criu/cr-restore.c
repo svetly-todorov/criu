@@ -2178,7 +2178,7 @@ static int finalize_restore_detach(void)
 				pr_perror("Restoring regs for %d failed", pid);
 				return -1;
 			}
-			if (restore_sud_per_core(pid, &item->threads[i]->core->thread_core)) {
+			if (restore_sud_per_core(pid, item->core[i]->thread_core)) {
 				pr_perror("Restoring SUD state for %d failed", pid);
 				return -1;
 			}

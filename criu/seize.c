@@ -18,6 +18,7 @@
 #include <compel/ptrace.h>
 #include "proc_parse.h"
 #include "seccomp.h"
+#include "sud.h"
 #include "seize.h"
 #include "stats.h"
 #include "string.h"
