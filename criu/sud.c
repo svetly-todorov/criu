@@ -132,16 +132,23 @@ int dump_sud(void)
 		se.settings = xmalloc(sizeof(*se.settings) * nr_settings);
 		if (!se.settings)
 			return -1;
-		/* Allocate the settings, themselves */
+		/* Allocate the settings themselves */
 		settings = xmalloc(sizeof(*settings) * nr_settings);
-		if (!settings)
+		if (!settings) {
+			xfree(se.settings);
 			return -1;
-		/* Fill the list of pointers with setting addrs */
-		for (i = 0; i < nr_settings; ++i)
+		}
+		/*
+		 * Fill the list of pointers with setting addresses,
+		 * initializing the protobuf structs on the way
+		 */
+		for (i = 0; i < nr_settings; ++i) {
+			sys_dispatch_setting__init(&settings[i]);
 			se.settings[i] = &settings[i];
+		}
 	}
 
-	/* Traverse again, this time saving the settings */
+	/* Traverse again, this time writing the settings to img format */
 	for (node = rb_first(&sud_tid_rb_root); node; node = rb_next(node)) {
 		entry = rb_entry(node, struct sys_dispatch_entry, node);
 
@@ -157,6 +164,7 @@ int dump_sud(void)
 
 	/* Once saved, we don't need to keep the SUD entries allocated */
 	xfree(se.settings);
+	xfree(settings);
 
 	return ret;
 }
