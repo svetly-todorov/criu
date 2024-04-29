@@ -231,6 +231,22 @@ int sud_read_image(void)
 // 	}
 // }
 
+static int open_core(int pid, CoreEntry **pcore)
+{
+	struct cr_img *img;
+	int ret;
+
+	img = open_image(CR_FD_CORE, O_RSTR, pid);
+	if (!img) {
+		pr_err("Can't open core data for %d\n", pid);
+		return -1;
+	}
+	ret = pb_read_one(img, pcore, PB_CORE);
+	close_image(img);
+
+	return ret <= 0 ? -1 : 0;
+}
+
 /*
  * Restore SUD directly from the image data, to
  * avoid disable/enable shuffling in the restorer blob.
@@ -240,21 +256,33 @@ int sud_read_image(void)
  * a few lines before close_image_dir(), which closes the
  * image streamer.
  */
-int restore_sud_per_core(pid_t tid_real, ThreadCoreEntry *tc)
+int restore_sud_per_core(pid_t tid_real)
 {
 	sud_config_t config;
 	SysDispatchSetting *ss;
+	CoreEntry *core;
+	ThreadCoreEntry *tc;
+	int ret = 0;
+
+	core = xmalloc(sizeof(*core));
+	if (open_core(tid_real, &core) < 0) {
+		pr_perror("Cannot open core for tid %d", tid_real);
+		return -1;
+	}
+
+	tc = core->thread_core;
 
 	if (!tc->has_sud_mode)
-		return 0;
+		goto cleanup_exit;
 
 	if (tc->sud_mode == SYS_DISPATCH_OFF)
-		return 0;
+		goto cleanup_exit;
 
 	if (tc->sud_setting >= sud_img_entry->n_settings) {
+		ret = -1;
 		pr_err("Corrupted sud setting index on tid %d (%u > %zu)\n", tid_real,
 				tc->sud_setting, sud_img_entry->n_settings);
-		return -1;
+		goto cleanup_exit;
 	}
 
 	ss = sud_img_entry->settings[tc->sud_setting];
@@ -264,5 +292,9 @@ int restore_sud_per_core(pid_t tid_real, ThreadCoreEntry *tc)
 	config.offset = ss->offset;
 	config.len = ss->len;
 
-	return ptrace_set_sud(tid_real, &config);
+	ret = ptrace_set_sud(tid_real, &config);
+
+cleanup_exit:
+	xfree(core);
+	return ret;
 }

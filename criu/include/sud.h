@@ -30,7 +30,7 @@ extern struct sys_dispatch_entry *sud_lookup(pid_t tid_real, bool create, bool m
 #define sud_find_entry(tid_real) sud_lookup(tid_real, false, true)
 extern int sud_collect_entry(pid_t tid_real);
 extern int sud_read_image(void);
-extern int restore_sud_per_core(pid_t tid_real, ThreadCoreEntry *thread_core);
+extern int restore_sud_per_core(pid_t tid_real);
 extern int dump_sud_per_core(pid_t tid_real, ThreadCoreEntry *tc);
 extern int dump_sud(void);
 

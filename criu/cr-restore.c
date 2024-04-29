@@ -2178,8 +2178,8 @@ static int finalize_restore_detach(void)
 				pr_perror("Restoring regs for %d failed", pid);
 				return -1;
 			}
-			if (restore_sud_per_core(pid, item->core[i]->thread_core)) {
-				pr_perror("Restoring SUD state for %d failed", pid);
+			if (restore_sud_per_core(pid)) {
+				pr_perror("Restoring syscall dispatch state for %d failed", pid);
 				return -1;
 			}
 			if (ptrace(PTRACE_DETACH, pid, NULL, 0)) {
