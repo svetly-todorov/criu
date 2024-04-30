@@ -63,8 +63,6 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 	char aux[128];
 	FILE *f;
 
-	sud_config_t sud;
-
 	sprintf(aux, "/proc/%d/status", pid);
 	f = fopen(aux, "r");
 	if (!f)
@@ -72,12 +70,6 @@ static int parse_pid_status(int pid, struct seize_task_status *ss, void *data)
 
 	ss->ppid = -1; /* Not needed at this point */
 	ss->seccomp_mode = SECCOMP_MODE_DISABLED;
-
-	/* Must read SUD mode from the ptrace poke. */
-	if (ptrace_get_sud(pid, &sud))
-		goto err_parse;
-	
-	ss->sud_mode = sud.mode;
 
 	while (fgets(aux, sizeof(aux), f)) {
 		if (!strncmp(aux, "State:", 6)) {
@@ -239,6 +231,7 @@ int compel_wait_task(int pid, int ppid, int (*get_status)(int pid, struct seize_
 		     void *data)
 {
 	siginfo_t si;
+	sud_config_t sud;
 	int status, nr_stopsig;
 	int ret = 0, ret2, wait_errno = 0;
 
@@ -262,6 +255,16 @@ try_again:
 		 */
 		wait_errno = errno;
 	}
+
+	/*
+	 * Must read SUD mode from a ptrace poke.
+	 * Doing it here rather than adding an extra header to proc_parse.c.
+	 */
+	ret2 = ptrace_get_sud(pid, &sud);
+	if (ret2)
+		goto err;
+	
+	ss->sud_mode = sud.mode;
 
 	ret2 = get_status(pid, ss, data);
 	if (ret2)
