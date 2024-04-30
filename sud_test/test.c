@@ -22,14 +22,21 @@ int main()
     char permissions[8];
     char *libc;
     // Buffer vars
-    char line[256], **linep = &line;
-    size_t size = sizeof(line);
+    char *line;
+    size_t size = 256;
     int rc = 1;
+
 
     FILE *fp = fopen("/proc/self/maps", "r");
     
+    line = malloc(size);
+    if (!line) {
+        printf("failed to malloc %lu bytes for reading /proc/maps\n", size);
+        exit(1);
+    }
+
     while (rc) {
-        rc = (int)getline(linep, &size, fp);
+        rc = (int)getline(&line, &size, fp);
 
         if (!rc) // No characters read, reached EOF
             break;
@@ -41,23 +48,23 @@ int main()
 
         rc = sscanf(line, "%lx-%lx %s ", &start, &end, permissions);
         if (rc != 3) {
-            printf("in line [ %s ] expected sscanf rc 3 but got rc %d\n", line, rc);
+            printf("in line...\n%s... expected sscanf rc 3 but got rc %d\n", line, rc);
             exit(1);
         }
 
         if (permissions[2] != 'x')
             continue;
         
-        printf("found executable mapping [%s]\n", line);
+        printf("---\nfound executable mapping:\n%s---\n", line);
 
         libc = strstr(line, "libc");
 
         if (!libc) {
-            printf("mapping [ %s ] is executable, but not libc\n", line);
+            printf("---\nmapping...\n%s... is executable, but not libc\n---\n", line);
             continue;
         }
 
-        printf("found libc executable region [%s]\n", line);
+        printf("---\nfound libc executable region!\n%s---\n", line);
         break;
     }
 
@@ -73,7 +80,7 @@ int main()
 
     // 3. Loop and wait for checkpoint //
 
-    printf("ready for checkpoint...\n");
+    printf("This PID, %d, is ready for checkpoint...\n", getpid());
 
     while (1) {
         sleep(1);
