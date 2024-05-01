@@ -181,6 +181,9 @@ int sud_read_image(void)
 	struct cr_img *img;
 	int ret;
 
+	if (sud_img_entry)
+		return 0;
+
 	img = open_image(CR_FD_SYS_DISPATCH, O_RSTR);
 	if (!img)
 		return -1;
@@ -263,6 +266,8 @@ int restore_sud_per_core(pid_t tid_real)
 	CoreEntry *core;
 	ThreadCoreEntry *tc;
 	int ret = 0;
+
+	sud_read_image();
 
 	core = xmalloc(sizeof(*core));
 	if (open_core(tid_real, &core) < 0) {
