@@ -319,6 +319,28 @@ try_again:
 		goto try_again;
 	}
 
+	/* Before we disable SUD, handle queued SIGSYS */
+	if ((ss->sigpnd | ss->shdpnd) & (1 << (SIGSYS - 1))) {
+		pr_info("Handling outstanding SIGSYS on %d...\n", pid);
+
+		ret = ptrace(PTRACE_CONT, pid, 0, 0);
+		if (ret) {
+			pr_perror("Unable to start process");
+			return -1;
+		}
+
+		ret = wait4(pid, &status, __WALL, NULL);
+		if (ret < 0) {
+			pr_perror("SEIZE %d: can't wait task", pid);
+			return -1;
+		}
+
+		if (!WIFSTOPPED(status)) {
+			pr_err("SEIZE %d: task not stopped after seize\n", pid);
+			return -1;
+		}
+	}
+
 	if (ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD)) {
 		pr_perror("Unable to set PTRACE_O_TRACESYSGOOD for %d", pid);
 		return -1;
