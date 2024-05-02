@@ -94,6 +94,8 @@ int main(int argc, char **argv)
     num_threads = atoi(argv[1]);
     iterations = atoi(argv[2]);
 
+    printf("./criu/criu dump -vvvv -j -t %d\n", getpid());
+
     threads = (pthread_t *)malloc(num_threads * sizeof(pthread_t));
     if (!threads) {
         printf("failed to malloc space for %d pthreads\n", t);
