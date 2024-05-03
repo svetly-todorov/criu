@@ -41,48 +41,48 @@ int ptrace_set_sud(pid_t tid, sud_config_t *set)
 	return 0;
 }
 
-int ptrace_suspend_sud(pid_t pid)
+int ptrace_suspend_sud(pid_t tid)
 {
-	char task[32];
-	int tid;
+	// char task[32];
 	sud_config_t disable;
-	struct dirent *de;
-	DIR *dp;
+	// struct dirent *de;
+	// DIR *dp;
 
 	/* Setup SUD-disable struct */
 	memset(&disable, 0, sizeof(disable));
 	disable.mode = PR_SYS_DISPATCH_OFF;
-	
-	/*
-	 * Get all tids for this PID and disable SUD on each.
-	 * Not sure if there's a more elegant way than /proc/<pid>/task.
-	 * Process should be suspended due to ptrace so no new threads.
-	 */
-	snprintf(task, sizeof(task), "/proc/%d/task", pid);
-	dp = opendir(task);
-	if (!dp) {
-		pr_perror("getting tids for %d failed", pid);
-		return -1;
-	}
 
-	while ((de = readdir(dp))) {
-		if (de->d_name[0] == '.')
-			continue;
+	/* Disable SUD for this thread */
+	return ptrace_set_sud(tid, &disable);
 
-		tid = atoi(de->d_name);
-		if (!tid) {
-			closedir(dp);
-			pr_perror("convert %s to tid failed", de->d_name);
-			return -1;
-		}
+	// /*
+	//  * Get all tids for this PID and disable SUD on each.
+	//  * Not sure if there's a more elegant way than /proc/<pid>/task.
+	//  * Process should be suspended due to ptrace so no new threads.
+	//  */
+	// snprintf(task, sizeof(task), "/proc/%d/task", pid);
+	// dp = opendir(task);
+	// if (!dp) {
+	// 	pr_perror("getting tids for %d failed", pid);
+	// 	return -1;
+	// }
+
+	// while ((de = readdir(dp))) {
+	// 	if (de->d_name[0] == '.')
+	// 		continue;
+
+	// 	tid = atoi(de->d_name);
+	// 	if (!tid) {
+	// 		closedir(dp);
+	// 		pr_perror("convert %s to tid failed", de->d_name);
+	// 		return -1;
+	// 	}
 		
-		/* Disable SUD for this thread */
-		ptrace_set_sud(tid, &disable);
-	}
+	// }
 
-	/* TODO rollback settings on failure? */
-	closedir(dp);
-	return 0;
+	// /* TODO rollback settings on failure? */
+	// closedir(dp);
+	// return 0;
 }
 
 int ptrace_suspend_seccomp(pid_t pid)

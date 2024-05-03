@@ -78,7 +78,7 @@ int sud_collect_entry(pid_t tid_real)
 	}
 
     if (ptrace_get_sud(tid_real, &config)) {
-        pr_err("Failed to get SUD settings for %d", tid_real);
+        pr_err("Failed to get SUD settings for %d\n", tid_real);
         return -1;
     }
 
