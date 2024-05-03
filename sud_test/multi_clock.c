@@ -16,8 +16,12 @@
 
 // Total clock_gettime invocations
 int iterations;
-// Thread local selector variable allows for SUD toggle
-__thread char selector;
+// __thread local variables probably don't work with CRIU;
+// try harebrained scheme instead
+char *selectors;
+int num_selectors;
+
+pthread_key_t tid_key;
 
 int gettid() {
     return syscall(SYS_gettid);
@@ -26,8 +30,11 @@ int gettid() {
 void sigsys_handler(int signo, siginfo_t *si, void *ucontext)
 {
     struct ucontext *ctxt = (struct ucontext *)ucontext;
+    int id;
 
-    selector = SYSCALL_DISPATCH_FILTER_ALLOW;
+    id = *(int *)pthread_getspecific(tid_key);
+
+    selectors[id] = SYSCALL_DISPATCH_FILTER_ALLOW;
 
     // set the return code to expected value of zero
     ctxt->uc_mcontext.rax = 0;
@@ -45,8 +52,15 @@ void *run_test(void *thread_data)
     sa.sa_sigaction = sigsys_handler;
     sa.sa_flags = SA_SIGINFO;
     
-    selector = SYSCALL_DISPATCH_FILTER_BLOCK;
     id = gettid() - getpid();
+    if (id >= num_selectors) {
+        printf("%d: id is greater than # of selectors\n", id);
+        return NULL;
+    }
+
+    pthread_setspecific(tid_key, (void *)&id);
+
+    selectors[id] = SYSCALL_DISPATCH_FILTER_BLOCK;
 
     // register sigsys handler
 
@@ -57,7 +71,7 @@ void *run_test(void *thread_data)
 
     // initialize syscall dispatch
 
-    if (prctl(PR_SET_SYSCALL_USER_DISPATCH, PR_SYS_DISPATCH_ON, 4096ull * 4096, 4096, &selector)) {
+    if (prctl(PR_SET_SYSCALL_USER_DISPATCH, PR_SYS_DISPATCH_ON, 4096ull * 4096, 4096, &selectors[id])) {
         printf("%d: sud prctl errno %d\n", id, errno);
         return NULL;
     }
@@ -66,14 +80,15 @@ void *run_test(void *thread_data)
     ttl = 0;
     while (i--)
     {
-        selector = SYSCALL_DISPATCH_FILTER_BLOCK;
+        selectors[id] = SYSCALL_DISPATCH_FILTER_BLOCK;
         start = __rdtsc();
         if (syscall(SYS_clock_gettime, CLOCK_REALTIME, &x, NULL) != 0)
         {
-            printf("clock_gettime failed\n");
+            selectors[id] = SYSCALL_DISPATCH_FILTER_ALLOW;
+            printf("%d: clock_gettime failed\n", gettid());
             exit(EXIT_FAILURE);
         }
-        // side effect of syscall catcher should be that selector -> SYSCALL_DISPATCH_FILTER_ALLOW
+        // side effect of syscall catcher should be that selectors[id] -> SYSCALL_DISPATCH_FILTER_ALLOW
         end = __rdtsc();
         ttl += end-start;
     }
@@ -91,8 +106,13 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    // global variables
     num_threads = atoi(argv[1]);
     iterations = atoi(argv[2]);
+    num_selectors = num_threads * 2;
+    selectors = (char *)malloc(num_selectors * sizeof(char));
+
+    pthread_key_create(&tid_key, NULL);
 
     printf("./criu/criu dump -vvvv -j -t %d\n", getpid());
 
