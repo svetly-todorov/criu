@@ -32,12 +32,12 @@ void sigsys_handler(int signo, siginfo_t *si, void *ucontext)
     struct ucontext *ctxt = (struct ucontext *)ucontext;
     int id;
 
+    // set the return code to expected value of zero
+    ctxt->uc_mcontext.rax = 0;
+
     id = *(int *)pthread_getspecific(tid_key);
 
     selectors[id] = SYSCALL_DISPATCH_FILTER_ALLOW;
-
-    // set the return code to expected value of zero
-    ctxt->uc_mcontext.rax = 0;
 
     return;
 }
@@ -45,7 +45,7 @@ void sigsys_handler(int signo, siginfo_t *si, void *ucontext)
 void *run_test(void *thread_data)
 {
     uint64_t start, end, ttl;
-    int i, id;
+    int i, id, rc;
     struct timespec x;
 
     struct sigaction sa;
@@ -82,10 +82,11 @@ void *run_test(void *thread_data)
     {
         selectors[id] = SYSCALL_DISPATCH_FILTER_BLOCK;
         start = __rdtsc();
-        if (syscall(SYS_clock_gettime, CLOCK_REALTIME, &x, NULL) != 0)
+        rc = syscall(SYS_clock_gettime, CLOCK_REALTIME, &x, NULL);
+        if (rc)
         {
             selectors[id] = SYSCALL_DISPATCH_FILTER_ALLOW;
-            printf("%d: clock_gettime failed\n", gettid());
+            printf("%d: clock_gettime failed with rc %d\n", gettid(), rc);
             exit(EXIT_FAILURE);
         }
         // side effect of syscall catcher should be that selectors[id] -> SYSCALL_DISPATCH_FILTER_ALLOW
@@ -134,7 +135,10 @@ int main(int argc, char **argv)
             printf("failed to join pthread %d errno %d\n", t, errno);
             exit(2);
         }
+        printf("main thread joined %d\n", t);
     }
+
+    printf("main thread exiting\n");
 
     return 0;
 }

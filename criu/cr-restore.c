@@ -2174,6 +2174,8 @@ static int finalize_restore_detach(void)
 				continue;
 			}
 
+			pr_debug("Try restoring syscall dispatch state for %d\n", pid);
+
 			if (arch_set_thread_regs_nosigrt(&item->threads[i])) {
 				pr_perror("Restoring regs for %d failed", pid);
 				return -1;

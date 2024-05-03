@@ -276,11 +276,15 @@ int restore_sud_per_core(pid_t tid_real)
 
 	tc = core->thread_core;
 
-	if (!tc->has_sud_mode)
+	if (!tc->has_sud_mode) {
+		pr_debug("%d has no sud_mode\n", tid_real);
 		goto cleanup_exit;
+	}
 
-	if (tc->sud_mode == SYS_DISPATCH_OFF)
+	if (tc->sud_mode == SYS_DISPATCH_OFF) {
+		pr_debug("%d is SYS_DISPATCH_OFF\n", tid_real);
 		goto cleanup_exit;
+	}
 
 	if (tc->sud_setting >= sud_img_entry->n_settings) {
 		ret = -1;
@@ -295,6 +299,8 @@ int restore_sud_per_core(pid_t tid_real)
 	config.selector = ss->selector;
 	config.offset = ss->offset;
 	config.len = ss->len;
+
+	pr_debug("SYS_DISPATCH_ON selector %lx offset %lx len %lu\n", ss->selector, ss->offset, ss->len);
 
 	ret = ptrace_set_sud(tid_real, &config);
 
