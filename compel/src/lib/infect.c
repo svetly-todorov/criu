@@ -319,26 +319,22 @@ try_again:
 		goto try_again;
 	}
 
-	/* Before we disable SUD, handle queued SIGSYS */
+	/*
+	 * Syscall dispatch SIGSYS may be pending, but not delivered yet --
+	 * check for it and handle herein. If the target process is aggressively
+	 * triggering SIGSYS, then we may not be able to progress past this
+	 * stage of the checkpoint, and timeout will occur.
+	 */
 	if ((ss->sigpnd | ss->shdpnd) & (1 << (SIGSYS - 1))) {
-		pr_info("Handling outstanding SIGSYS on %d...\n", pid);
-
 		ret = ptrace(PTRACE_CONT, pid, 0, 0);
 		if (ret) {
 			pr_perror("Unable to start process");
 			return -1;
 		}
 
-		ret = wait4(pid, &status, __WALL, NULL);
-		if (ret < 0) {
-			pr_perror("SEIZE %d: can't wait task", pid);
-			return -1;
-		}
-
-		if (!WIFSTOPPED(status)) {
-			pr_err("SEIZE %d: task not stopped after seize\n", pid);
-			return -1;
-		}
+		if (free_status)
+			free_status(pid, ss, data);
+		goto try_again;
 	}
 
 	if (ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD)) {

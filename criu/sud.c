@@ -87,7 +87,6 @@ int sud_collect_entry(pid_t tid_real)
     entry->offset = config.offset;
     entry->len = config.len;
 
-	pr_debug("Collected tid_real %d, SUD mode %lx\n", tid_real, config.mode);
 	return 0;
 }
 
