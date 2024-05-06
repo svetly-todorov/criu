@@ -89,11 +89,14 @@ void *run_test(void *thread_data)
             printf("%d: clock_gettime failed with rc %d\n", gettid(), rc);
             exit(EXIT_FAILURE);
         }
+        // sleep(1);
+        volatile uint64_t count = 0;
+        while (count++ < 1000) ;
         // side effect of syscall catcher should be that selectors[id] -> SYSCALL_DISPATCH_FILTER_ALLOW
         end = __rdtsc();
         ttl += end-start;
     }
-    printf("%d: AVG: %ld cycles\n", id, ttl/1000000);
+    printf("%d: AVG: %ld cycles\n", id, ttl/iterations);
     return NULL;
 }
 
@@ -115,7 +118,7 @@ int main(int argc, char **argv)
 
     pthread_key_create(&tid_key, NULL);
 
-    printf("./criu/criu dump -vvvv -j -t %d\n", getpid());
+    printf("sudo ./criu/criu dump -vvvv -j -t %d\n", getpid());
 
     threads = (pthread_t *)malloc(num_threads * sizeof(pthread_t));
     if (!threads) {
