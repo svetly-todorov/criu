@@ -14,10 +14,13 @@
 
 #include <x86intrin.h>
 
-// Total clock_gettime invocations
 int iterations;
-// __thread local variables probably don't work with CRIU;
-// try harebrained scheme instead
+// SUD can be enabled/disabled by toggling a byte at an address.
+// We track those bytes perthread in 'selectors'.
+// In a naive scheme, threads could index into 'selectors' via their TID.
+// But we don't want to do a syscall in the sigsys handler.
+// So instead we get the index into 'selectors' via a pthread thread-local variable,
+// accessed via pthread_getspecific
 char *selectors;
 int num_selectors;
 
@@ -27,12 +30,14 @@ int gettid() {
     return syscall(SYS_gettid);
 }
 
+// SUD causes SIGSYS when a syscall instruction is encountered.
+// We catch the SIGSYS and enter this handler.
 void sigsys_handler(int signo, siginfo_t *si, void *ucontext)
 {
     struct ucontext *ctxt = (struct ucontext *)ucontext;
     int id;
 
-    // set the return code to expected value of zero
+    // Set the return code to expected value of zero
     ctxt->uc_mcontext.rax = 0;
 
     id = *(int *)pthread_getspecific(tid_key);
@@ -76,6 +81,22 @@ void *run_test(void *thread_data)
         return NULL;
     }
 
+    // For 'iterations' counts:
+    // enable SUD, then do syscall() to jump to the sigsys handler.
+    // The sigsys handler should set rc to zero.
+    //   (if not, then print an error message and exit)
+    // The handler will disable SUD and return execution flow to this function.
+
+    // After return, busy-wait on 'count,' so as to introduce a delay before
+    // the next iteration of the loop.
+
+    // If CRIU sees that the seized process is waiting on a SIGSYS, then it will
+    // let the process run briefly before seizing it again. The number of cycles
+    // that we busy-wait in while (count++ ...) lets us control how much of a
+    // delay there is between subsequent SIGSYSes. If this delay is too short,
+    // then CRIU never gets a chance to stop the target process in a no-signal-
+    // pending state, and the checkpoint times out.
+
     i = iterations;
     ttl = 0;
     while (i--)
@@ -89,10 +110,9 @@ void *run_test(void *thread_data)
             printf("%d: clock_gettime failed with rc %d\n", gettid(), rc);
             exit(EXIT_FAILURE);
         }
-        // sleep(1);
         volatile uint64_t count = 0;
         while (count++ < 1000) ;
-        // side effect of syscall catcher should be that selectors[id] -> SYSCALL_DISPATCH_FILTER_ALLOW
+
         end = __rdtsc();
         ttl += end-start;
     }
